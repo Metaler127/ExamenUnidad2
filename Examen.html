@@ -31,15 +31,33 @@
         }
 
         .info {
-            flex: auto;
-            justify-content: center;
-            align-items: center;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .timer {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <canvas id="myCanvas"></canvas>
+    </div>
+    <div class="info" id="scoreDisplay">
+        Puntos: 0
+    </div>
+    <div class="timer" id="timerDisplay">
+        Tiempo: 00:00
     </div>
     <script>
         const myCanvas = document.getElementById("myCanvas");
@@ -53,18 +71,26 @@
         window.addEventListener('resize', resizeCanvas);
 
         var speed = 4;
-        var direction = "";
         var pause = false;
+        var score = 0;
+        var time = 0;
+        var timerInterval;
         const musica = new Audio("sounds/soundtrack.ogg");
-
-        const shoot = new Audio("sounds/shoot.mp3");
+        const shoot = new Audio("sounds/shoot.ogg");
         const steps = new Audio("sounds/steps.mp3");
+
         // Tanquesito
         var tank = new Image();
-        tank.src = "img/tanque3.png";
+        tank.src = "img/tanque.png";
+
+        // Bala
+        var bullet = new Image();
+        bullet.src = "img/bullet.png";
+
         // Fondo
         var background = new Image();
         background.src = "img/desierto.jpg";
+
         // Imagen de enemigos
         var enemyImg = new Image();
         enemyImg.src = "img/enemy.gif";
@@ -91,19 +117,33 @@
                 this.h = h;
             }
             colision(otro) {
-                if (this.x < otro.x + otro.w
-                    && this.x + this.w > otro.x
-                    && this.y < otro.y + otro.h
-                    && this.y + this.h > otro.y) {
-                    return true;
-                }
-                return false;
+                return this.x < otro.x + otro.w && this.x + this.w > otro.x && this.y < otro.y + otro.h && this.y + this.h > otro.y;
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, speed) {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.w = 30;
+                this.h = 40;
+            }
+            update() {
+                this.y -= this.speed;
+            }
+            draw(ctx) {
+                ctx.drawImage(bullet, this.x, this.y, this.w, this.h);
             }
         }
 
         var player = new Rectangulo(tank, 50, 745, 200, 200, speed);
         var enemies = [];
+        var projectiles = [];
         const keyManager = new KeyManager();
+
+        const cooldown = 1000; // 1 segundo en milisegundos
+        let lastShotTime = 0;
 
         function createEnemy() {
             if (!pause) {
@@ -125,16 +165,23 @@
             if (e.key === "Enter") {
                 pause = !pause;
                 if (!pause) { 
+                    startTimer();
                     nextEnemy();
+                } else {
+                    stopTimer();
+                }
+            }
+            if (e.key === " ") {
+                const currentTime = Date.now();
+                if (currentTime - lastShotTime >= cooldown) {
+                    shoot.play();
+                    projectiles.push(new Projectile(player.x + player.w / 2 - 5, player.y, 5));
+                    lastShotTime = currentTime;
                 }
             }
         });
-        
-
+        startTimer();
         function update() {
-            keyManager.keys.forEach(valor =>{
-                console.log(valor)
-            })
             if (!pause) {
                 switch (true) {
                     case keyManager.keys.has("KeyA"): {
@@ -160,6 +207,27 @@
                     }
                 });
 
+                projectiles.forEach((projectile, index) => {
+                    projectile.update();
+                    if (projectile.y < 0) {
+                        projectiles.splice(index, 1);
+                    }
+                });
+
+                projectiles.forEach((projectile, pIndex) => {
+                    enemies.forEach((enemy, eIndex) => {
+                        if (projectile.x < enemy.x + enemy.w &&
+                            projectile.x + projectile.w > enemy.x &&
+                            projectile.y < enemy.y + enemy.h &&
+                            projectile.y + projectile.h > enemy.y) {
+                            enemies.splice(eIndex, 1);
+                            projectiles.splice(pIndex, 1);
+                            score += 1; // Aumenta la puntuación
+                            updateScore();
+                        }
+                    });
+                });
+
                 musica.loop = true;
                 musica.volume = 0.02;
                 musica.play();
@@ -174,13 +242,18 @@
         }
 
         function paint() {
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // Limpiar canvas
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
             ctx.drawImage(background, 0, 0, myCanvas.width, myCanvas.height);
             ctx.drawImage(player.img, player.x, player.y, player.w, player.h);
 
             // Dibujar enemigos
             enemies.forEach((enemy) => {
                 ctx.drawImage(enemy.img, enemy.x, enemy.y, enemy.w, enemy.h);
+            });
+
+            // Dibujar proyectiles
+            projectiles.forEach((projectile) => {
+                projectile.draw(ctx);
             });
 
             if (pause) {
@@ -196,6 +269,30 @@
             requestAnimationFrame(paint);
         }
 
+        function updateScore() {
+            const scoreDisplay = document.getElementById("scoreDisplay");
+            scoreDisplay.textContent = `Puntos: ${score}`;
+        }
+
+        function updateTime() {
+            const timerDisplay = document.getElementById("timerDisplay");
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+            const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timerDisplay.textContent = `Tiempo: ${formattedTime}`;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                time++;
+                updateTime();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
         requestAnimationFrame(paint);
         window.requestAnimationFrame = (function () {
             return window.requestAnimationFrame || 
@@ -206,8 +303,5 @@
             };
         }());
     </script>
-    <div class="info">
-        Puntos: 
-    </div>
 </body>
 </html>
