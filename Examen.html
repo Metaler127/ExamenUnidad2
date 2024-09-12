@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen</title>
+    <style>
+        body, html {
+            padding: 0;
+            margin: 0;
+            background-color: gray;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center; 
+            align-items: center;     
+            height: 100%;           
+        }
+
+        canvas {
+            display: block;
+            background-color: rgba(238, 234, 191);
+        }
+
+        #myCanvas {
+            width: 80%;
+            height: 80%;
+            border: 1px solid black;
+        }
+
+        .info {
+            flex: auto;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="myCanvas"></canvas>
+    </div>
+    <script>
+        const myCanvas = document.getElementById("myCanvas");
+        const ctx = myCanvas.getContext("2d");
+
+        function resizeCanvas() {
+            myCanvas.width = window.innerWidth;
+            myCanvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        var speed = 4;
+        var direction = "";
+        var pause = false;
+        const musica = new Audio("sounds/soundtrack.ogg");
+
+        const shoot = new Audio("sounds/shoot.mp3");
+        const steps = new Audio("sounds/steps.mp3");
+        // Tanquesito
+        var tank = new Image();
+        tank.src = "img/tanque3.png";
+        // Fondo
+        var background = new Image();
+        background.src = "img/desierto.jpg";
+        // Imagen de enemigos
+        var enemyImg = new Image();
+        enemyImg.src = "img/enemy.gif";
+
+        class KeyManager {
+            constructor() {
+                this.keys = new Set();
+                document.addEventListener("keydown", event => {
+                    this.keys.add(event.code);
+                });
+                document.addEventListener("keyup", event => {
+                    this.keys.delete(event.code);
+                });
+            }
+        }
+
+        class Rectangulo {
+            constructor(img, x, y, w, h, speed) {
+                this.speed = speed;
+                this.img = img;
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+            }
+            colision(otro) {
+                if (this.x < otro.x + otro.w
+                    && this.x + this.w > otro.x
+                    && this.y < otro.y + otro.h
+                    && this.y + this.h > otro.y) {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        var player = new Rectangulo(tank, 50, 745, 200, 200, speed);
+        var enemies = [];
+        const keyManager = new KeyManager();
+
+        function createEnemy() {
+            if (!pause) {
+                let enemyX = Math.random() * (myCanvas.width - 150);
+                enemies.push(new Rectangulo(enemyImg, enemyX, -150, 100, 100, 1));
+            }
+            nextEnemy();
+        }
+
+        function nextEnemy() {
+            if (!pause) {
+                setTimeout(createEnemy, 2000);
+            }
+        }
+
+        nextEnemy();
+
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                pause = !pause;
+                if (!pause) { 
+                    nextEnemy();
+                }
+            }
+        });
+        
+
+        function update() {
+            keyManager.keys.forEach(valor =>{
+                console.log(valor)
+            })
+            if (!pause) {
+                switch (true) {
+                    case keyManager.keys.has("KeyA"): {
+                        player.x -= player.speed;
+                        if (player.x < 0) { 
+                            player.x = 0;
+                        }
+                        break;
+                    }
+                    case keyManager.keys.has("KeyD"): {
+                        player.x += player.speed;
+                        if (player.x + player.w > myCanvas.width) {
+                            player.x = myCanvas.width - player.w;
+                        }
+                        break;
+                    }
+                }
+
+                enemies.forEach((enemy, index) => {
+                    enemy.y += enemy.speed;
+                    if (enemy.y > myCanvas.height) {
+                        enemies.splice(index, 1);
+                    }
+                });
+
+                musica.loop = true;
+                musica.volume = 0.02;
+                musica.play();
+
+                steps.loop = true;
+                steps.volume = 0.1;
+                steps.play();
+            } else {
+                musica.pause();
+                steps.pause();
+            }
+        }
+
+        function paint() {
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // Limpiar canvas
+            ctx.drawImage(background, 0, 0, myCanvas.width, myCanvas.height);
+            ctx.drawImage(player.img, player.x, player.y, player.w, player.h);
+
+            // Dibujar enemigos
+            enemies.forEach((enemy) => {
+                ctx.drawImage(enemy.img, enemy.x, enemy.y, enemy.w, enemy.h);
+            });
+
+            if (pause) {
+                ctx.fillStyle = "rgba(145,145,145,0.5)";
+                ctx.fillRect(0, 0, myCanvas.width, myCanvas.height);
+
+                ctx.font = "italic bold 20px arial, serif";
+                ctx.fillStyle = "black";
+                ctx.fillText("P A U S A", myCanvas.width / 2 - 50, myCanvas.height / 2);
+            }
+
+            update();
+            requestAnimationFrame(paint);
+        }
+
+        requestAnimationFrame(paint);
+        window.requestAnimationFrame = (function () {
+            return window.requestAnimationFrame || 
+            window.webkitRequestAnimationFrame || 
+            window.mozRequestAnimationFrame ||
+            function (callback) {
+                window.setTimeout(callback, 17);
+            };
+        }());
+    </script>
+    <div class="info">
+        Puntos: 
+    </div>
+</body>
+</html>
