@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,6 +47,46 @@
             color: white;
             font-family: Arial, sans-serif;
         }
+
+        .lives {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .lives img {
+            width: 45px;
+            height: 45px;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 30px;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            gap: 50px; /* Espacio entre los textos */
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
@@ -59,9 +99,26 @@
     <div class="timer" id="timerDisplay">
         Tiempo: 00:00
     </div>
+
+    <div class="lives" id="livesContainer">
+        <img src="img/vidas.jpg" class="life" alt="Vida">
+        <img src="img/vidas.jpg" class="life" alt="Vida">
+        <img src="img/vidas.jpg" class="life" alt="Vida">
+    </div>
+
+    <div class="start-screen" id="startScreen">
+        <div class="text-container">
+            <div>Haz clic para iniciar el juego</div>
+            <div>Carlos Adrian Carballo Canales</div>
+        </div>
+    </div>
+    
+
     <script>
         const myCanvas = document.getElementById("myCanvas");
         const ctx = myCanvas.getContext("2d");
+        const startScreen = document.getElementById("startScreen");
+        const livesContainer = document.getElementById("livesContainer");
 
         function resizeCanvas() {
             myCanvas.width = window.innerWidth;
@@ -74,10 +131,17 @@
         var pause = false;
         var score = 0;
         var time = 0;
+        var lives = 3;
         var timerInterval;
         const musica = new Audio("sounds/soundtrack.ogg");
         const shoot = new Audio("sounds/shoot.ogg");
         const steps = new Audio("sounds/steps.mp3");
+
+        musica.loop = true;
+        musica.volume = 0.02;
+
+        steps.loop = true;
+        steps.volume = 0.1;
 
         // Tanquesito
         var tank = new Image();
@@ -117,7 +181,8 @@
                 this.h = h;
             }
             colision(otro) {
-                return this.x < otro.x + otro.w && this.x + this.w > otro.x && this.y < otro.y + otro.h && this.y + this.h > otro.y;
+                return this.x < otro.x + otro.w && this.x + this.w > otro
+                .x && this.y < otro.y + otro.h && this.y + this.h > otro.y;
             }
         }
 
@@ -159,18 +224,26 @@
             }
         }
 
-        nextEnemy();
-
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 pause = !pause;
-                if (!pause) { 
+                if (!pause) {
                     startTimer();
                     nextEnemy();
+                    
+                    if (musica.paused) {
+                        musica.play();
+                    }
+                    if (steps.paused) {
+                        steps.play();
+                    }
                 } else {
                     stopTimer();
+                    musica.pause();
+                    steps.pause();
                 }
             }
+
             if (e.key === " ") {
                 const currentTime = Date.now();
                 if (currentTime - lastShotTime >= cooldown) {
@@ -180,7 +253,7 @@
                 }
             }
         });
-        startTimer();
+
         function update() {
             if (!pause) {
                 switch (true) {
@@ -204,6 +277,7 @@
                     enemy.y += enemy.speed;
                     if (enemy.y > myCanvas.height) {
                         enemies.splice(index, 1);
+                        loseLife(); // Llamar a la función para perder vida si un enemigo pasa
                     }
                 });
 
@@ -227,18 +301,45 @@
                         }
                     });
                 });
-
-                musica.loop = true;
-                musica.volume = 0.02;
-                musica.play();
-
-                steps.loop = true;
-                steps.volume = 0.1;
-                steps.play();
             } else {
                 musica.pause();
                 steps.pause();
             }
+        }
+
+        function loseLife() {
+            if (lives > 0) {
+                lives--;
+                updateLives();
+            }
+            if (lives === 0) {
+                gameOver();
+            }
+        }
+
+        function updateLives() {
+            const lifeImages = document.querySelectorAll('.life');
+            lifeImages.forEach((img, index) => {
+                img.style.display = index < lives ? 'inline' : 'none';
+            });
+        }
+
+        function gameOver() {
+            pause = true;
+            stopTimer();
+            alert("¡Juego terminado!"); // Alerta al finalizar el juego
+            resetGame();
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            time = 0;
+            enemies = [];
+            projectiles = [];
+            updateScore();
+            updateLives();
+            startScreen.style.display = "flex";
         }
 
         function paint() {
@@ -271,21 +372,18 @@
 
         function updateScore() {
             const scoreDisplay = document.getElementById("scoreDisplay");
-            scoreDisplay.textContent = `Puntos: ${score}`;
-        }
-
-        function updateTime() {
-            const timerDisplay = document.getElementById("timerDisplay");
-            const minutes = Math.floor(time / 60);
-            const seconds = time % 60;
-            const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            timerDisplay.textContent = `Tiempo: ${formattedTime}`;
+            scoreDisplay.innerText = `Puntos: ${score}`;
         }
 
         function startTimer() {
+            let startTime = Date.now() - time;
             timerInterval = setInterval(() => {
-                time++;
-                updateTime();
+                time = Date.now() - startTime;
+                const seconds = Math.floor((time / 1000) % 60);
+                const minutes = Math.floor((time / (1000 * 60)) % 60);
+                const formattedSeconds = seconds < 10 ? "0" + seconds : seconds;
+                const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+                document.getElementById("timerDisplay").innerText = `Tiempo: ${formattedMinutes}:${formattedSeconds}`;
             }, 1000);
         }
 
@@ -293,15 +391,16 @@
             clearInterval(timerInterval);
         }
 
-        requestAnimationFrame(paint);
-        window.requestAnimationFrame = (function () {
-            return window.requestAnimationFrame || 
-            window.webkitRequestAnimationFrame || 
-            window.mozRequestAnimationFrame ||
-            function (callback) {
-                window.setTimeout(callback, 17);
-            };
-        }());
+        paint();
+
+        startScreen.addEventListener("click", () => {
+            startScreen.style.display = "none";
+            pause = false;
+            musica.play();
+            steps.play();
+            startTimer();
+            nextEnemy();
+        });
     </script>
 </body>
 </html>
