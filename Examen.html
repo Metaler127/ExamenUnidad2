@@ -133,15 +133,23 @@
         var time = 0;
         var lives = 3;
         var timerInterval;
-        const musica = new Audio("sounds/soundtrack.ogg");
-        const shoot = new Audio("sounds/shoot.ogg");
-        const steps = new Audio("sounds/steps.mp3");
+        var difficulty = 1;
 
+        const shoot = new Audio("sounds/shoot.ogg");
+        shoot.volume = 0.2;
+        
+        const musica = new Audio("sounds/soundtrack.ogg");
         musica.loop = true;
         musica.volume = 0.02;
 
-        steps.loop = true;
-        steps.volume = 0.1;
+        var stepsLevel1 = new Audio("sounds/steps.mp3");
+        stepsLevel1.loop = true;
+        stepsLevel1.volume = 0.1;
+
+        var stepsLevel2 = new Audio("sounds/car.ogg");
+        stepsLevel2.loop = true;
+        stepsLevel2.volume = 0.1;
+
 
         // Tanquesito
         var tank = new Image();
@@ -158,6 +166,9 @@
         // Imagen de enemigos
         var enemyImg = new Image();
         enemyImg.src = "img/enemy.gif";
+
+        var enemy2Img = new Image();
+        enemy2Img.src = "img/car.png";
 
         class KeyManager {
             constructor() {
@@ -202,27 +213,13 @@
             }
         }
 
-        var player = new Rectangulo(tank, 50, 745, 200, 200, speed);
+        var player = new Rectangulo(tank, 850, 745, 200, 200, speed);
         var enemies = [];
         var projectiles = [];
         const keyManager = new KeyManager();
 
-        const cooldown = 1000; // 1 segundo en milisegundos
+        const cooldown = 800; //TIEMPO ENTRE DISPAROS
         let lastShotTime = 0;
-
-        function createEnemy() {
-            if (!pause) {
-                let enemyX = Math.random() * (myCanvas.width - 150);
-                enemies.push(new Rectangulo(enemyImg, enemyX, -150, 100, 100, 1));
-            }
-            nextEnemy();
-        }
-
-        function nextEnemy() {
-            if (!pause) {
-                setTimeout(createEnemy, 2000);
-            }
-        }
 
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
@@ -230,17 +227,22 @@
                 if (!pause) {
                     startTimer();
                     nextEnemy();
-                    
+
                     if (musica.paused) {
                         musica.play();
                     }
-                    if (steps.paused) {
-                        steps.play();
+
+                    // Reproducir el sonido correcto según la dificultad
+                    if (difficulty === 1 && stepsLevel1.paused) {
+                        stepsLevel1.play();
+                    } else if (difficulty === 2 && stepsLevel2.paused) {
+                        stepsLevel2.play();
                     }
                 } else {
                     stopTimer();
                     musica.pause();
-                    steps.pause();
+                    stepsLevel1.pause();
+                    stepsLevel2.pause();
                 }
             }
 
@@ -256,31 +258,36 @@
 
         function update() {
             if (!pause) {
+                // Movimiento del jugador
                 switch (true) {
-                    case keyManager.keys.has("KeyA"): {
+                    case keyManager.keys.has("KeyA"): { // Si presiona la tecla A (moverse a la izquierda)
                         player.x -= player.speed;
-                        if (player.x < 0) { 
-                            player.x = 0;
+                        // Si el tanque toca el borde izquierdo, aparecerá en el borde derecho
+                        if (player.x + player.w < 0) { 
+                            player.x = myCanvas.width;
                         }
                         break;
                     }
-                    case keyManager.keys.has("KeyD"): {
+                    case keyManager.keys.has("KeyD"): { // Si presiona la tecla D (moverse a la derecha)
                         player.x += player.speed;
-                        if (player.x + player.w > myCanvas.width) {
-                            player.x = myCanvas.width - player.w;
+                        // Si el tanque toca el borde derecho, aparecerá en el borde izquierdo
+                        if (player.x > myCanvas.width) {
+                            player.x = -player.w;
                         }
                         break;
                     }
                 }
 
+                // Movimiento de enemigos
                 enemies.forEach((enemy, index) => {
                     enemy.y += enemy.speed;
                     if (enemy.y > myCanvas.height) {
                         enemies.splice(index, 1);
-                        loseLife(); // Llamar a la función para perder vida si un enemigo pasa
+                        loseLife();
                     }
                 });
 
+                // Movimiento de proyectiles
                 projectiles.forEach((projectile, index) => {
                     projectile.update();
                     if (projectile.y < 0) {
@@ -288,6 +295,7 @@
                     }
                 });
 
+                // Colisiones entre proyectiles y enemigos
                 projectiles.forEach((projectile, pIndex) => {
                     enemies.forEach((enemy, eIndex) => {
                         if (projectile.x < enemy.x + enemy.w &&
@@ -296,14 +304,65 @@
                             projectile.y + projectile.h > enemy.y) {
                             enemies.splice(eIndex, 1);
                             projectiles.splice(pIndex, 1);
-                            score += 1; // Aumenta la puntuación
+
+                            score += 1;
                             updateScore();
                         }
                     });
                 });
             } else {
                 musica.pause();
-                steps.pause();
+                stepsLevel1.pause();
+                stepsLevel2.pause();
+            }
+        }
+
+
+        function paint() {
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); 
+            ctx.drawImage(background, 0, 0, myCanvas.width, myCanvas.height);
+            ctx.drawImage(player.img, player.x, player.y, player.w, player.h);
+
+            // Dibujar enemigos
+            enemies.forEach((enemy) => {
+                ctx.drawImage(enemy.img, enemy.x, enemy.y, enemy.w, enemy.h);
+            });
+
+            // Dibujar proyectiles
+            projectiles.forEach((projectile) => {
+                projectile.draw(ctx);
+            });
+
+            // Si el juego está en pausa, muestra la pantalla de pausa
+            if (pause) {
+                ctx.fillStyle = "rgba(145,145,145,0.5)";
+                ctx.fillRect(0, 0, myCanvas.width, myCanvas.height);
+
+                ctx.font = "italic bold 20px arial, serif";
+                ctx.fillStyle = "black";
+                ctx.fillText("P A U S A", myCanvas.width / 2 - 50, myCanvas.height / 2);
+            }
+
+            if (!pause) {
+                update(); // Solo actualiza el juego si no está en pausa
+            }
+
+            requestAnimationFrame(paint);
+        }
+
+        
+        function createEnemy() {
+            if (!pause) {
+                let enemyX = Math.random() * (myCanvas.width - 150);
+                let enemyImgToUse = difficulty === 1 ? enemyImg : enemy2Img;
+                enemies.push(new Rectangulo(enemyImgToUse, enemyX, -150, 100, 100, difficulty === 1 ? 1 : 2));
+            }
+            nextEnemy();
+        }
+
+        function nextEnemy() {
+            if (!pause) {
+                setTimeout(createEnemy, 1500);
             }
         }
 
@@ -335,44 +394,51 @@
             score = 0;
             lives = 3;
             time = 0;
+            difficulty = 1;
+            player.speed = 4;
             enemies = [];
             projectiles = [];
+
+            stepsLevel1.pause();
+            stepsLevel1.currentTime = 0;
+            stepsLevel2.pause();
+            stepsLevel2.currentTime = 0;
+            musica.pause();
+            musica.currentTime = 0;
+
+            pause = true; // Mantener en pausa hasta que se haga clic en la pantalla de inicio
+
             updateScore();
             updateLives();
-            startScreen.style.display = "flex";
+            startScreen.style.display = "flex"; // Mostrar pantalla de inicio
         }
 
-        function paint() {
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
-            ctx.drawImage(background, 0, 0, myCanvas.width, myCanvas.height);
-            ctx.drawImage(player.img, player.x, player.y, player.w, player.h);
 
-            // Dibujar enemigos
+
+
+        function increaseDifficulty() {
+            difficulty = 2;
+
             enemies.forEach((enemy) => {
-                ctx.drawImage(enemy.img, enemy.x, enemy.y, enemy.w, enemy.h);
+                enemy.img = enemy2Img;
+                enemy.speed += 1;
             });
 
-            // Dibujar proyectiles
-            projectiles.forEach((projectile) => {
-                projectile.draw(ctx);
-            });
-
-            if (pause) {
-                ctx.fillStyle = "rgba(145,145,145,0.5)";
-                ctx.fillRect(0, 0, myCanvas.width, myCanvas.height);
-
-                ctx.font = "italic bold 20px arial, serif";
-                ctx.fillStyle = "black";
-                ctx.fillText("P A U S A", myCanvas.width / 2 - 50, myCanvas.height / 2);
-            }
-
-            update();
-            requestAnimationFrame(paint);
+            stepsLevel1.pause();
+            stepsLevel1.currentTime = 0;
+            stepsLevel2.play();
+            player.speed = 5;
+            console.log("¡Dificultad aumentada y sonido de pasos cambiado!");
         }
+
 
         function updateScore() {
             const scoreDisplay = document.getElementById("scoreDisplay");
             scoreDisplay.innerText = `Puntos: ${score}`;
+
+            if (score >= 15 && difficulty === 1) {
+                increaseDifficulty();
+            }
         }
 
         function startTimer() {
@@ -395,12 +461,23 @@
 
         startScreen.addEventListener("click", () => {
             startScreen.style.display = "none";
-            pause = false;
+            pause = false; // Ahora el juego comenzará correctamente, saliendo de la pausa
+
             musica.play();
-            steps.play();
-            startTimer();
-            nextEnemy();
+
+            // Reproducir el sonido de pasos correcto según la dificultad
+            if (difficulty === 1) {
+                stepsLevel1.play();
+            } else if (difficulty === 2) {
+                stepsLevel2.play();
+            }
+
+            startTimer(); // Iniciar el temporizador
+            nextEnemy(); // Empezar a generar enemigos
         });
+
+
+
     </script>
 </body>
 </html>
