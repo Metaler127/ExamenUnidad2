@@ -9,49 +9,59 @@
             padding: 0;
             margin: 0;
             background-color: gray;
-            overflow: hidden;
+            height: 100%;
         }
 
         .container {
             display: flex;
-            justify-content: center; 
-            align-items: center;     
-            height: 100%;           
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .canvas-container {
+            width: 80%;
+            height: 100%;
+            border: 5px solid black;
+            background-color: rgba(238, 234, 191);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
         }
 
         canvas {
             display: block;
-            background-color: rgba(238, 234, 191);
+            width: 100%;
+            height: 100%;
+            border: none;
         }
 
-        #myCanvas {
-            width: 80%;
-            height: 80%;
-            border: 1px solid black;
+        .info, .controls {
+            font-size: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
         }
 
         .info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
-            color: white;
-            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            margin-bottom: 20px;
         }
 
-        .timer {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 20px;
+        .controls {
+            width: 80%;
+            text-align: center;
+            font-size: 18px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
             color: white;
-            font-family: Arial, sans-serif;
         }
 
         .lives {
-            position: absolute;
-            top: 50px;
-            left: 10px;
             display: flex;
             gap: 10px;
         }
@@ -83,27 +93,67 @@
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            gap: 50px; /* Espacio entre los textos */
+            gap: 50px;
             text-align: center;
+        }
+
+        .defeat-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(196, 16, 16, 0.445);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 30px;
+            font-family: Arial, sans-serif;
+            z-index: 10;
+            display: none;
+        }
+
+        .defeat-screen .text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            text-align: center;
+        }
+
+        .defeat-screen button {
+            font-size: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
         }
 
     </style>
 </head>
 <body>
     <div class="container">
-        <canvas id="myCanvas"></canvas>
-    </div>
-    <div class="info" id="scoreDisplay">
-        Puntos: 0
-    </div>
-    <div class="timer" id="timerDisplay">
-        Tiempo: 00:00
-    </div>
+        <div class="info">
+            <div id="scoreDisplay">Puntos: 0</div>
+            <div id="timerDisplay">Tiempo: 00:00</div>
+            <div class="lives" id="livesContainer">
+                <img src="img/vidas.jpg" class="life" alt="Vida">
+                <img src="img/vidas.jpg" class="life" alt="Vida">
+                <img src="img/vidas.jpg" class="life" alt="Vida">
+            </div>
+        </div>
 
-    <div class="lives" id="livesContainer">
-        <img src="img/vidas.jpg" class="life" alt="Vida">
-        <img src="img/vidas.jpg" class="life" alt="Vida">
-        <img src="img/vidas.jpg" class="life" alt="Vida">
+        <div class="canvas-container">
+            <canvas id="myCanvas" height="750"></canvas>
+        </div>
+
+        <div class="controls">
+            Controles: A - Izquierda | D - Derecha | Espacio - Disparar | Enter - Pausar
+        </div>
     </div>
 
     <div class="start-screen" id="startScreen">
@@ -112,8 +162,14 @@
             <div>Carlos Adrian Carballo Canales</div>
         </div>
     </div>
-    
 
+    <div class="defeat-screen" id="defeatScreen">
+        <div class="text-container">
+            <div>¡Juego Terminado!</div>
+            <button id="restartButton">Reiniciar Juego</button>
+        </div>
+    </div>
+    
     <script>
         const myCanvas = document.getElementById("myCanvas");
         const ctx = myCanvas.getContext("2d");
@@ -121,17 +177,18 @@
         const livesContainer = document.getElementById("livesContainer");
 
         function resizeCanvas() {
-            myCanvas.width = window.innerWidth;
-            myCanvas.height = window.innerHeight;
+            const canvasContainer = document.querySelector('.canvas-container');
+            myCanvas.width = canvasContainer.clientWidth;
+            myCanvas.height = canvasContainer.clientHeight;
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        var speed = 4;
+        var speed = 3;
         var pause = false;
         var score = 0;
-        var time = 0;
         var lives = 3;
+        var time = 0;
         var timerInterval;
         var difficulty = 1;
 
@@ -150,25 +207,27 @@
         stepsLevel2.loop = true;
         stepsLevel2.volume = 0.1;
 
+        var stepsLevel3 = new Audio("sounds/Avioneta.ogg");
+        stepsLevel3.loop = true;
+        stepsLevel3.volume = 0.1;
 
-        // Tanquesito
         var tank = new Image();
         tank.src = "img/tanque.png";
 
-        // Bala
         var bullet = new Image();
         bullet.src = "img/bullet.png";
 
-        // Fondo
         var background = new Image();
         background.src = "img/desierto.jpg";
 
-        // Imagen de enemigos
         var enemyImg = new Image();
         enemyImg.src = "img/enemy.gif";
 
         var enemy2Img = new Image();
         enemy2Img.src = "img/car.png";
+
+        var enemy3Img = new Image();
+        enemy3Img.src = "img/plane.png";
 
         class KeyManager {
             constructor() {
@@ -213,40 +272,44 @@
             }
         }
 
-        var player = new Rectangulo(tank, 850, 745, 200, 200, speed);
+        var player = new Rectangulo(tank, 850, 640, 125, 125, speed);
         var enemies = [];
         var projectiles = [];
         const keyManager = new KeyManager();
 
-        const cooldown = 800; //TIEMPO ENTRE DISPAROS
+        let cooldown = 800;
+        let nextEnemyInterval = 1500;
         let lastShotTime = 0;
 
         document.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 pause = !pause;
+
                 if (!pause) {
                     startTimer();
                     nextEnemy();
 
-                    if (musica.paused) {
-                        musica.play();
+                    musica.play();
+                    if (difficulty === 1) {
+                        stepsLevel1.play();
+                    } else if (difficulty === 2) {
+                        stepsLevel2.play();
+                    } else if (difficulty === 3) {
+                        stepsLevel3.play();
                     }
 
-                    // Reproducir el sonido correcto según la dificultad
-                    if (difficulty === 1 && stepsLevel1.paused) {
-                        stepsLevel1.play();
-                    } else if (difficulty === 2 && stepsLevel2.paused) {
-                        stepsLevel2.play();
-                    }
                 } else {
                     stopTimer();
                     musica.pause();
+
                     stepsLevel1.pause();
                     stepsLevel2.pause();
+                    stepsLevel3.pause();
                 }
             }
 
             if (e.key === " ") {
+                e.preventDefault();
                 const currentTime = Date.now();
                 if (currentTime - lastShotTime >= cooldown) {
                     shoot.play();
@@ -258,19 +321,17 @@
 
         function update() {
             if (!pause) {
-                // Movimiento del jugador
                 switch (true) {
-                    case keyManager.keys.has("KeyA"): { // Si presiona la tecla A (moverse a la izquierda)
+                    case keyManager.keys.has("KeyA"): {
                         player.x -= player.speed;
-                        // Si el tanque toca el borde izquierdo, aparecerá en el borde derecho
+
                         if (player.x + player.w < 0) { 
                             player.x = myCanvas.width;
                         }
                         break;
                     }
-                    case keyManager.keys.has("KeyD"): { // Si presiona la tecla D (moverse a la derecha)
+                    case keyManager.keys.has("KeyD"): {
                         player.x += player.speed;
-                        // Si el tanque toca el borde derecho, aparecerá en el borde izquierdo
                         if (player.x > myCanvas.width) {
                             player.x = -player.w;
                         }
@@ -278,7 +339,6 @@
                     }
                 }
 
-                // Movimiento de enemigos
                 enemies.forEach((enemy, index) => {
                     enemy.y += enemy.speed;
                     if (enemy.y > myCanvas.height) {
@@ -287,7 +347,6 @@
                     }
                 });
 
-                // Movimiento de proyectiles
                 projectiles.forEach((projectile, index) => {
                     projectile.update();
                     if (projectile.y < 0) {
@@ -295,7 +354,6 @@
                     }
                 });
 
-                // Colisiones entre proyectiles y enemigos
                 projectiles.forEach((projectile, pIndex) => {
                     enemies.forEach((enemy, eIndex) => {
                         if (projectile.x < enemy.x + enemy.w &&
@@ -317,23 +375,19 @@
             }
         }
 
-
         function paint() {
             ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); 
             ctx.drawImage(background, 0, 0, myCanvas.width, myCanvas.height);
             ctx.drawImage(player.img, player.x, player.y, player.w, player.h);
 
-            // Dibujar enemigos
             enemies.forEach((enemy) => {
                 ctx.drawImage(enemy.img, enemy.x, enemy.y, enemy.w, enemy.h);
             });
 
-            // Dibujar proyectiles
             projectiles.forEach((projectile) => {
                 projectile.draw(ctx);
             });
 
-            // Si el juego está en pausa, muestra la pantalla de pausa
             if (pause) {
                 ctx.fillStyle = "rgba(145,145,145,0.5)";
                 ctx.fillRect(0, 0, myCanvas.width, myCanvas.height);
@@ -344,9 +398,8 @@
             }
 
             if (!pause) {
-                update(); // Solo actualiza el juego si no está en pausa
+                update();
             }
-
             requestAnimationFrame(paint);
         }
 
@@ -354,15 +407,28 @@
         function createEnemy() {
             if (!pause) {
                 let enemyX = Math.random() * (myCanvas.width - 150);
-                let enemyImgToUse = difficulty === 1 ? enemyImg : enemy2Img;
-                enemies.push(new Rectangulo(enemyImgToUse, enemyX, -150, 100, 100, difficulty === 1 ? 1 : 2));
+                let enemyImgToUse;
+
+                if (difficulty === 1) {
+                    enemyImgToUse = enemyImg;
+                } else if (difficulty === 2) {
+                    enemyImgToUse = enemy2Img; 
+                } else if (difficulty === 3) {
+                    enemyImgToUse = enemy3Img;
+                }
+
+                enemies.push(new Rectangulo(enemyImgToUse, enemyX, -150, 100, 100, difficulty));
             }
             nextEnemy();
         }
 
         function nextEnemy() {
             if (!pause) {
-                setTimeout(createEnemy, 1500);
+                let interval = 1500;
+                if (difficulty === 3) {
+                    interval = nextEnemyInterval;
+                }
+                setTimeout(createEnemy, interval);
             }
         }
 
@@ -386,16 +452,23 @@
         function gameOver() {
             pause = true;
             stopTimer();
-            alert("¡Juego terminado!"); // Alerta al finalizar el juego
-            resetGame();
+            document.getElementById("defeatScreen").style.display = "flex";
         }
+
+        document.getElementById("restartButton").addEventListener("click", () => {
+            document.getElementById("defeatScreen").style.display = "none";
+            resetGame();
+        });
+
+
 
         function resetGame() {
             score = 0;
             lives = 3;
             time = 0;
             difficulty = 1;
-            player.speed = 4;
+            player.speed = 3;
+            cooldown = 800;
             enemies = [];
             projectiles = [];
 
@@ -403,40 +476,68 @@
             stepsLevel1.currentTime = 0;
             stepsLevel2.pause();
             stepsLevel2.currentTime = 0;
+            stepsLevel3.pause(); 
+            stepsLevel3.currentTime = 0; 
+
             musica.pause();
             musica.currentTime = 0;
 
-            pause = true; // Mantener en pausa hasta que se haga clic en la pantalla de inicio
+            pause = true;
 
             updateScore();
             updateLives();
-            startScreen.style.display = "flex"; // Mostrar pantalla de inicio
+            startScreen.style.display = "flex";
         }
-
-
 
 
         function increaseDifficulty() {
-            difficulty = 2;
+            if (difficulty === 1) {
+                difficulty = 2;
 
-            enemies.forEach((enemy) => {
-                enemy.img = enemy2Img;
-                enemy.speed += 1;
-            });
+                
+                enemies.forEach((enemy) => {
+                    enemy.img = enemy2Img;
+                    enemy.speed = 2;
+                });
 
-            stepsLevel1.pause();
-            stepsLevel1.currentTime = 0;
-            stepsLevel2.play();
-            player.speed = 5;
-            console.log("¡Dificultad aumentada y sonido de pasos cambiado!");
+                
+                stepsLevel1.pause();
+                stepsLevel1.currentTime = 0;
+                stepsLevel2.play();
+                player.speed = 4;
+
+            } else if (difficulty === 2) {
+                difficulty = 3;
+
+                
+                enemies.forEach((enemy) => {
+                    enemy.img = enemy3Img;
+                    enemy.speed = 3;
+                });
+
+                
+                stepsLevel2.pause();
+                stepsLevel2.currentTime = 0;
+                stepsLevel3.play();
+                player.speed = 5;
+
+                
+                cooldown = 400; 
+
+                
+                nextEnemyInterval = 700; 
+            }
         }
-
 
         function updateScore() {
             const scoreDisplay = document.getElementById("scoreDisplay");
             scoreDisplay.innerText = `Puntos: ${score}`;
 
-            if (score >= 15 && difficulty === 1) {
+            if (score >= 5 && difficulty === 1) {
+                increaseDifficulty()
+            }
+
+            if (score >= 10 && difficulty === 2) {
                 increaseDifficulty();
             }
         }
@@ -461,22 +562,28 @@
 
         startScreen.addEventListener("click", () => {
             startScreen.style.display = "none";
-            pause = false; // Ahora el juego comenzará correctamente, saliendo de la pausa
+            pause = false;
 
             musica.play();
-
-            // Reproducir el sonido de pasos correcto según la dificultad
+            
             if (difficulty === 1) {
                 stepsLevel1.play();
             } else if (difficulty === 2) {
                 stepsLevel2.play();
+            } else if (difficulty === 3) {
+                stepsLevel3.play();
             }
 
-            startTimer(); // Iniciar el temporizador
-            nextEnemy(); // Empezar a generar enemigos
+            startTimer(); 
+            nextEnemy();
         });
 
-
+        if (pause) {
+            musica.pause();
+            stepsLevel1.pause();
+            stepsLevel2.pause();
+            stepsLevel3.pause();
+        }
 
     </script>
 </body>
