@@ -187,6 +187,7 @@
         var speed = 3;
         var pause = false;
         var score = 0;
+        var maxScore = 0;
         var lives = 3;
         var time = 0;
         var timerInterval;
@@ -403,7 +404,6 @@
             requestAnimationFrame(paint);
         }
 
-        
         function createEnemy() {
             if (!pause) {
                 let enemyX = Math.random() * (myCanvas.width - 150);
@@ -452,17 +452,29 @@
         function gameOver() {
             pause = true;
             stopTimer();
-            document.getElementById("defeatScreen").style.display = "flex";
-        }
+            
+            if (score > maxScore) {
+                maxScore = score;
+            }
 
-        document.getElementById("restartButton").addEventListener("click", () => {
-            document.getElementById("defeatScreen").style.display = "none";
-            resetGame();
-        });
+            const defeatScreen = document.getElementById("defeatScreen");
+            defeatScreen.style.display = "flex";
+
+            const textContainer = defeatScreen.querySelector(".text-container");
+            textContainer.innerHTML = `
+                <div>¡Juego Terminado!</div>
+                <div>Puntuación: ${score}</div>
+                <div>Puntuación Máxima: ${maxScore}</div>
+                <button id="restartButton">Reiniciar Juego</button>
+            `;
+
+            document.getElementById("restartButton").addEventListener("click", resetGame);
+        }
 
 
 
         function resetGame() {
+            document.getElementById("defeatScreen").style.display = "none";
             score = 0;
             lives = 3;
             time = 0;
@@ -476,9 +488,9 @@
             stepsLevel1.currentTime = 0;
             stepsLevel2.pause();
             stepsLevel2.currentTime = 0;
-            stepsLevel3.pause(); 
-            stepsLevel3.currentTime = 0; 
-
+            stepsLevel3.pause();
+            stepsLevel3.currentTime = 0;
+            
             musica.pause();
             musica.currentTime = 0;
 
@@ -494,13 +506,11 @@
             if (difficulty === 1) {
                 difficulty = 2;
 
-                
                 enemies.forEach((enemy) => {
                     enemy.img = enemy2Img;
                     enemy.speed = 2;
                 });
 
-                
                 stepsLevel1.pause();
                 stepsLevel1.currentTime = 0;
                 stepsLevel2.play();
@@ -509,22 +519,17 @@
             } else if (difficulty === 2) {
                 difficulty = 3;
 
-                
                 enemies.forEach((enemy) => {
                     enemy.img = enemy3Img;
                     enemy.speed = 3;
                 });
 
-                
                 stepsLevel2.pause();
                 stepsLevel2.currentTime = 0;
                 stepsLevel3.play();
                 player.speed = 5;
 
-                
                 cooldown = 400; 
-
-                
                 nextEnemyInterval = 700; 
             }
         }
