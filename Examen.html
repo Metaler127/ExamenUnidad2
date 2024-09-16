@@ -273,7 +273,7 @@
             }
         }
 
-        var player = new Rectangulo(tank, 850, 640, 125, 125, speed);
+        var player = new Rectangulo(tank, 700, 640, 125, 125, speed);
         var enemies = [];
         var projectiles = [];
         const keyManager = new KeyManager();
@@ -528,7 +528,7 @@
                 player.speed = 5;
 
                 cooldown = 400; 
-                nextEnemyInterval = 700; 
+                nextEnemyInterval = 900; 
             }
         }
 
@@ -536,11 +536,11 @@
             const scoreDisplay = document.getElementById("scoreDisplay");
             scoreDisplay.innerText = `Puntos: ${score}`;
 
-            if (score >= 5 && difficulty === 1) {
+            if (score >= 25 && difficulty === 1) {
                 increaseDifficulty()
             }
 
-            if (score >= 10 && difficulty === 2) {
+            if (score >= 125 && difficulty === 2) {
                 increaseDifficulty();
             }
         }
